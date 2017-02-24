@@ -75,7 +75,7 @@ CLASS LCL_MAIN IMPLEMENTATION.
     " Loooong process
     LOOP AT T_T001 INTO W_T001.
 
-      " Set it with current tabix, it will be processed number of societies
+      " Set it with current tabix, it will be societies processed so far
       N_LINE = SY-TABIX.
 
       " Update progress indicator

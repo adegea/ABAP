@@ -2,38 +2,36 @@
 *& Report  ZF_OO_LOGS
 *&
 *&---------------------------------------------------------------------*
-*& Example of use IF_RECA_MESSAGE_LIST
-*& 
+*&
+*&
 *&---------------------------------------------------------------------*
 
-REPORT ZF_OO_LOGS.
+REPORT zf_oo_logs.
 
 *&---------------------------------------------------------------------*
 *& SELECTION SCREENS
 *&---------------------------------------------------------------------*
-TABLES: T001.
+TABLES: t001.
 
-SELECTION-SCREEN: BEGIN OF SCREEN 100.
-SELECT-OPTIONS R_BUKRS FOR T001-BUKRS.
-SELECTION-SCREEN: END OF SCREEN 100.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
+SELECT-OPTIONS r_bukrs FOR t001-bukrs.
+SELECTION-SCREEN END OF BLOCK b1.
 
-AT SELECTION-SCREEN ON EXIT-COMMAND.
-  LEAVE PROGRAM.
 
 *&---------------------------------------------------------------------*
 *&       Class LCL_MAIN
 *&---------------------------------------------------------------------*
 *        Text
 *----------------------------------------------------------------------*
-CLASS LCL_MAIN DEFINITION.
+CLASS lcl_main DEFINITION.
 
   PUBLIC SECTION.
     DATA:
-      O_MSG_LOG TYPE REF TO IF_RECA_MESSAGE_LIST.
+      o_msg_log TYPE REF TO if_reca_message_list.
 
     METHODS:
-      CONSTRUCTOR,
-      START.
+      constructor,
+      start.
 
 ENDCLASS.               "LCL_MAIN
 
@@ -42,68 +40,63 @@ ENDCLASS.               "LCL_MAIN
 *&---------------------------------------------------------------------*
 *        Text
 *----------------------------------------------------------------------*
-CLASS LCL_MAIN IMPLEMENTATION.
+CLASS lcl_main IMPLEMENTATION.
 
 
-  METHOD CONSTRUCTOR.
+  METHOD constructor.
     " Object and subobject must be created in SLG0
-    ME->O_MSG_LOG = CF_RECA_MESSAGE_LIST=>CREATE( ID_OBJECT       = 'RECA'
-                                                  ID_SUBOBJECT    = 'MISC' ).
+    me->o_msg_log = cf_reca_message_list=>create( id_object       = 'RECA'
+                                                  id_subobject    = 'MISC' ).
   ENDMETHOD.                    "CONSTRUCTOR
 
 
-  METHOD START.
-    DATA: T_T001 TYPE TABLE OF T001,
-          W_T001 TYPE T001.
-
-    " Data selection
-    CALL SELECTION-SCREEN 100.
+  METHOD start.
 
     " Fill T_T001 with filter societies
-    SELECT * INTO TABLE T_T001
-      FROM T001
-     WHERE BUKRS IN R_BUKRS.
+    SELECT * INTO TABLE @data(lt_t001)
+      FROM t001
+     WHERE bukrs IN @r_bukrs.
 
-    IF SY-DBCNT = 0.
-      ME->O_MSG_LOG->ADD(
+    IF sy-dbcnt = 0.
+      me->o_msg_log->add(
         EXPORTING
-          ID_MSGTY = 'W'
-          ID_MSGID = '00'            " Messages: Message Class
-          ID_MSGNO = '398'           " Messages: Message Number
-          ID_MSGV1 = 'No hay datos'  " 1st Message Variable as Text
+          id_msgty = 'W'
+          id_msgid = '00'            " Messages: Message Class
+          id_msgno = '398'           " Messages: Message Number
+          id_msgv1 = 'No hay datos'  " 1st Message Variable as Text
       ).
       RETURN.
     ENDIF.
 
 
     " Check if Business partner is filled.
-    LOOP AT T_T001 INTO W_T001.
+    LOOP AT lt_t001 INTO DATA(ls_t001).
 
-      IF W_T001-RCOMP IS NOT INITIAL.
-        ME->O_MSG_LOG->ADD(
+      IF ls_t001-rcomp IS NOT INITIAL.
+        me->o_msg_log->add(
           EXPORTING
-            ID_MSGTY = 'S'
-            ID_MSGID = '00'            " Messages: Message Class
-            ID_MSGNO = '398'           " Messages: Message Number
-            ID_MSGV1 = W_T001-BUKRS    " 1st Message Variable as Text
-            ID_MSGV2 = W_T001-BUTXT    " 2nd Message Variable as Text
-            ID_MSGV3 = W_T001-RCOMP    " 3rd Message Variable as Text
+            id_msgty = 'S'
+            id_msgid = '00'            " Messages: Message Class
+            id_msgno = '398'           " Messages: Message Number
+            id_msgv1 = ls_t001-bukrs    " 1st Message Variable as Text
+            id_msgv2 = ls_t001-butxt    " 2nd Message Variable as Text
+            id_msgv3 = ls_t001-rcomp    " 3rd Message Variable as Text
         ).
       ELSE.
-        ME->O_MSG_LOG->ADD(
+        me->o_msg_log->add(
           EXPORTING
-            ID_MSGTY = 'E'
-            ID_MSGID = '00'            " Messages: Message Class
-            ID_MSGNO = '398'           " Messages: Message Number
-            ID_MSGV1 = W_T001-BUKRS    " 1st Message Variable as Text
-            ID_MSGV2 = W_T001-BUTXT    " 2nd Message Variable as Text
-            ID_MSGV3 = |--> T001-RCOMP is empty|    " 3rd Message Variable as Text
+            id_msgty = 'E'
+            id_msgid = '00'            " Messages: Message Class
+            id_msgno = '398'           " Messages: Message Number
+            id_msgv1 = ls_t001-bukrs    " 1st Message Variable as Text
+            id_msgv2 = ls_t001-butxt    " 2nd Message Variable as Text
+            id_msgv3 = |--> T001-RCOMP is empty|    " 3rd Message Variable as Text
         ).
       ENDIF.
 
       " Throw exception
-      IF W_T001-BUKRS = 'FR90'.
-        RAISE EXCEPTION TYPE CX_SALV_EXPORT_ERROR. " By example
+      IF ls_t001-bukrs = 'FR90'.
+        RAISE EXCEPTION TYPE cx_salv_export_error. " By example
       ENDIF.
 
     ENDLOOP.
@@ -115,31 +108,39 @@ ENDCLASS.               "LCL_MAIN
 
 
 *&---------------------------------------------------------------------*
+*& GLOBAL
+*&---------------------------------------------------------------------*
+DATA: go_main TYPE REF TO lcl_main.
+
+*&---------------------------------------------------------------------*
+*& INITIALIZATION
+*&---------------------------------------------------------------------*
+INITIALIZATION.
+  CREATE OBJECT go_main.
+
+*&---------------------------------------------------------------------*
 *& MAIN
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-  DATA: GO_MAIN TYPE REF TO LCL_MAIN,
-        GO_CX_ROOT TYPE REF TO CX_ROOT.
-
   TRY.
 
-      CREATE OBJECT GO_MAIN.
-      GO_MAIN->START( ).
+      CREATE OBJECT go_main.
+      go_main->start( ).
 
-    CATCH CX_ROOT INTO GO_CX_ROOT.
-      GO_MAIN->O_MSG_LOG->ADD_FROM_EXCEPTION( EXPORTING IO_EXCEPTION = GO_CX_ROOT ).
+    CATCH cx_root INTO DATA(go_cx_root).
+      go_main->o_msg_log->add_from_exception( EXPORTING io_exception = go_cx_root ).
   ENDTRY.
 
   " Show result
-  IF GO_MAIN->O_MSG_LOG->HAS_MESSAGES_OF_MSGTY( ID_MSGTY = 'W' IF_OR_HIGHER = ABAP_TRUE ) = ABAP_TRUE.
+  IF go_main->o_msg_log->has_messages_of_msgty( id_msgty = 'W' if_or_higher = abap_true ) = abap_true.
 
     " Display collected messages
-    DATA: T_LOG_HANDLE TYPE BAL_T_LOGH.
-    APPEND GO_MAIN->O_MSG_LOG->GET_HANDLE( ) TO T_LOG_HANDLE.
+    DATA: gt_log_handle TYPE bal_t_logh.
+    APPEND go_main->o_msg_log->get_handle( ) TO gt_log_handle.
     CALL FUNCTION 'BAL_DSP_LOG_DISPLAY'
       EXPORTING
-        I_T_LOG_HANDLE = T_LOG_HANDLE.
+        i_t_log_handle = gt_log_handle.
 
   ELSE.
     MESSAGE 'OK' TYPE 'I'.

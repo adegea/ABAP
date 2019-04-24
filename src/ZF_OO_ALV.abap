@@ -6,43 +6,40 @@
 *&
 *&---------------------------------------------------------------------*
 
-REPORT ZF_OO_ALV.
+REPORT zf_oo_alv.
 
 *&---------------------------------------------------------------------*
 *& SELECTION SCREENS
 *&---------------------------------------------------------------------*
-TABLES: T001.
+TABLES: t001.
 
-SELECTION-SCREEN: BEGIN OF SCREEN 100.
-SELECT-OPTIONS R_BUKRS FOR T001-BUKRS.
-SELECTION-SCREEN: END OF SCREEN 100.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
+SELECT-OPTIONS r_bukrs FOR t001-bukrs.
+SELECTION-SCREEN END OF BLOCK b1.
 
-AT SELECTION-SCREEN ON EXIT-COMMAND.
-  LEAVE PROGRAM.
 
 *&---------------------------------------------------------------------*
 *&       Class LCL_MAIN
 *&---------------------------------------------------------------------*
 *        Text
 *----------------------------------------------------------------------*
-CLASS LCL_MAIN DEFINITION.
+CLASS lcl_main DEFINITION.
 
   PUBLIC SECTION.
     METHODS:
-      START.
+      start.
 
   PRIVATE SECTION.
     TYPES:
-      TT_ALV TYPE TABLE OF T001,
-      TY_ALV TYPE LINE OF TT_ALV.
+      tt_alv TYPE TABLE OF t001,
+      ty_alv TYPE LINE OF tt_alv.
 
     DATA:
-      T_ALV TYPE TT_ALV.
+      t_alv TYPE tt_alv.
 
     METHODS:
-      SELECTION_ALV,
-      FILL_ALV,
-      SHOW_ALV.
+      fill_alv,
+      show_alv.
 
 ENDCLASS.               "LCL_MAIN
 
@@ -51,68 +48,61 @@ ENDCLASS.               "LCL_MAIN
 *&---------------------------------------------------------------------*
 *        Text
 *----------------------------------------------------------------------*
-CLASS LCL_MAIN IMPLEMENTATION.
+CLASS lcl_main IMPLEMENTATION.
 
 
-  METHOD START.
-    ME->SELECTION_ALV( ).
-    ME->FILL_ALV( ).
-    ME->SHOW_ALV( ).
+  METHOD start.
+    fill_alv( ).
+    show_alv( ).
   ENDMETHOD.                    "START
 
 
-  METHOD SELECTION_ALV.
-    CALL SELECTION-SCREEN 100.
-  ENDMETHOD.
-
-
-  METHOD FILL_ALV.
-    SELECT * INTO TABLE ME->T_ALV
-      FROM T001
-     WHERE BUKRS IN R_BUKRS.
+  METHOD fill_alv.
+    SELECT * INTO TABLE t_alv
+      FROM t001
+     WHERE bukrs IN r_bukrs.
   ENDMETHOD.                    "FILL_ALV
 
 
-  METHOD SHOW_ALV.
-    DATA: O_ALV TYPE REF TO CL_SALV_TABLE.
+  METHOD show_alv.
+    DATA: lo_alv TYPE REF TO cl_salv_table.
 
     TRY .
 
-        CL_SALV_TABLE=>FACTORY(
+        cl_salv_table=>factory(
             IMPORTING
-              R_SALV_TABLE = O_ALV
+              r_salv_table = lo_alv
             CHANGING
-              T_TABLE      = ME->T_ALV
+              t_table      = t_alv
           ).
 
         " Header
-        DATA: O_HEADER  TYPE REF TO CL_SALV_FORM_LAYOUT_GRID,
-              O_H_LABEL TYPE REF TO CL_SALV_FORM_LABEL,
-              S_SELECCION TYPE STRING.
+        DATA: lo_header    TYPE REF TO cl_salv_form_layout_grid,
+              lo_h_label   TYPE REF TO cl_salv_form_label,
+              lv_seleccion TYPE string.
 
-        CREATE OBJECT O_HEADER.
-        S_SELECCION = R_BUKRS.
-        O_H_LABEL = O_HEADER->CREATE_LABEL( ROW = 1 COLUMN = 1 ).
-        O_H_LABEL->SET_TEXT( |Selection: { S_SELECCION }| ).
-        O_ALV->SET_TOP_OF_LIST( O_HEADER ).
-        O_ALV->SET_TOP_OF_LIST_PRINT( O_HEADER ).
+        CREATE OBJECT lo_header.
+        lv_seleccion = r_bukrs.
+        lo_h_label = lo_header->create_label( row = 1 column = 1 ).
+        lo_h_label->set_text( |Selection: { lv_seleccion }| ).
+        lo_alv->set_top_of_list( lo_header ).
+        lo_alv->set_top_of_list_print( lo_header ).
 
         " Columns
-        DATA O_COLUMNS TYPE REF TO CL_SALV_COLUMNS_TABLE.
-        O_COLUMNS = O_ALV->GET_COLUMNS( ).
-        O_COLUMNS->SET_OPTIMIZE( ).
+        DATA lo_columns TYPE REF TO cl_salv_columns_table.
+        lo_columns = lo_alv->get_columns( ).
+        lo_columns->set_optimize( ).
 
         " Funtions
-        DATA O_FUNCTIONS TYPE REF TO CL_SALV_FUNCTIONS_LIST.
-        O_FUNCTIONS = O_ALV->GET_FUNCTIONS( ).
-        O_FUNCTIONS->SET_ALL( ).
+        DATA lo_functions TYPE REF TO cl_salv_functions_list.
+        lo_functions = lo_alv->get_functions( ).
+        lo_functions->set_all( ).
 
-        O_ALV->DISPLAY( ).
+        lo_alv->display( ).
 
-      CATCH CX_SALV_MSG.
-      CATCH CX_SALV_EXISTING.
-      CATCH CX_SALV_DATA_ERROR.
-      CATCH CX_SALV_NOT_FOUND.
+
+      CATCH cx_salv_msg cx_salv_existing cx_salv_data_error cx_salv_not_found INTO DATA(lcx_salv).
+        MESSAGE lcx_salv->get_longtext( ) TYPE 'S' DISPLAY LIKE 'E'.
     ENDTRY.
   ENDMETHOD.                    "SHOW_ALV
 
@@ -120,18 +110,26 @@ ENDCLASS.               "LCL_MAIN
 
 
 *&---------------------------------------------------------------------*
+*& GLOBAL
+*&---------------------------------------------------------------------*
+DATA: go_main TYPE REF TO lcl_main.
+
+*&---------------------------------------------------------------------*
+*& INITIALIZATION
+*&---------------------------------------------------------------------*
+INITIALIZATION.
+  CREATE OBJECT go_main.
+
+*&---------------------------------------------------------------------*
 *& MAIN
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-  DATA: GO_MAIN TYPE REF TO LCL_MAIN,
-        GO_CX_ROOT TYPE REF TO CX_ROOT.
-
   TRY.
 
-      CREATE OBJECT GO_MAIN.
-      GO_MAIN->START( ).
+      go_main->start( ).
 
-    CATCH CX_ROOT INTO GO_CX_ROOT.
+    CATCH cx_root INTO DATA(go_cx_root).
+      MESSAGE go_cx_root->get_longtext( ) TYPE 'S' DISPLAY LIKE 'E'.
       BREAK-POINT. " For testing purposes only
   ENDTRY.

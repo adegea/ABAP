@@ -6,35 +6,32 @@
 *&
 *&---------------------------------------------------------------------*
 
-REPORT ZF_OO_PROIND.
+REPORT zf_oo_proind.
 
 *&---------------------------------------------------------------------*
 *& SELECTION SCREENS
 *&---------------------------------------------------------------------*
-TABLES: T001.
+TABLES: t001.
 
-SELECTION-SCREEN: BEGIN OF SCREEN 100.
-SELECT-OPTIONS R_BUKRS FOR T001-BUKRS.
-SELECTION-SCREEN: END OF SCREEN 100.
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME.
+SELECT-OPTIONS r_bukrs FOR t001-bukrs.
+SELECTION-SCREEN END OF BLOCK b1.
 
-AT SELECTION-SCREEN ON EXIT-COMMAND.
-  LEAVE PROGRAM.
 
 *&---------------------------------------------------------------------*
 *&       Class LCL_MAIN
 *&---------------------------------------------------------------------*
 *        Text
 *----------------------------------------------------------------------*
-CLASS LCL_MAIN DEFINITION.
+CLASS lcl_main DEFINITION.
 
   PUBLIC SECTION.
     METHODS:
-      START.
+      start.
 
   PRIVATE SECTION.
     METHODS:
-      SELECTION,
-      LONG_TASK.
+      long_task.
 
 ENDCLASS.               "LCL_MAIN
 
@@ -43,48 +40,37 @@ ENDCLASS.               "LCL_MAIN
 *&---------------------------------------------------------------------*
 *        Text
 *----------------------------------------------------------------------*
-CLASS LCL_MAIN IMPLEMENTATION.
+CLASS lcl_main IMPLEMENTATION.
 
 
-  METHOD START.
-    ME->SELECTION( ).
-    ME->LONG_TASK( ).
+  METHOD start.
+    long_task( ).
   ENDMETHOD.                    "START
 
 
-  METHOD SELECTION.
-    CALL SELECTION-SCREEN 100.
-  ENDMETHOD.                    "SELECTION
-
-
-  METHOD LONG_TASK.
-    DATA: T_T001 TYPE TABLE OF T001,
-          W_T001 TYPE T001,
-          N_LINES TYPE SY-TABIX,
-          N_LINE TYPE SY-TABIX.
-
+  METHOD long_task.
 
     " Fill T_T001 with filtered Societies
-    SELECT * INTO TABLE T_T001
-      FROM T001
-     WHERE BUKRS IN R_BUKRS.
+    SELECT * INTO TABLE @DATA(lt_t001)
+      FROM t001
+     WHERE bukrs IN @r_bukrs.
 
     " Set 100% lines to be processed
-    N_LINES = SY-DBCNT.
+    DATA(ln_lines) = sy-dbcnt.
 
     " Loooong process
-    LOOP AT T_T001 INTO W_T001.
+    LOOP AT lt_t001 INTO DATA(ls_t001).
 
       " Set it with current tabix, it will be societies processed so far
-      N_LINE = SY-TABIX.
+      DATA(ln_line) = sy-tabix.
 
       " Update progress indicator
-      CL_PROGRESS_INDICATOR=>PROGRESS_INDICATE(
+      cl_progress_indicator=>progress_indicate(
         EXPORTING
-          I_TEXT               = | Processing { W_T001-BUKRS } { W_T001-BUTXT } ( { N_LINE } / { N_LINES } )|
-          I_PROCESSED          = N_LINE        " Number of Objects Already Processed
-          I_TOTAL              = N_LINES       " Total Number of Objects to Be Processed
-          I_OUTPUT_IMMEDIATELY = ABAP_TRUE     " X = Display Progress Immediately
+          i_text               = | Processing { ls_t001-bukrs } { ls_t001-butxt } ( { ln_line } / { ln_lines } )|
+          i_processed          = ln_line        " Number of Objects Already Processed
+          i_total              = ln_lines       " Total Number of Objects to Be Processed
+          i_output_immediately = abap_true     " X = Display Progress Immediately
       ).
 
       " Go to sleep
@@ -98,18 +84,26 @@ ENDCLASS.               "LCL_MAIN
 
 
 *&---------------------------------------------------------------------*
+*& GLOBAL
+*&---------------------------------------------------------------------*
+DATA: go_main TYPE REF TO lcl_main.
+
+*&---------------------------------------------------------------------*
+*& INITIALIZATION
+*&---------------------------------------------------------------------*
+INITIALIZATION.
+  CREATE OBJECT go_main.
+
+*&---------------------------------------------------------------------*
 *& MAIN
 *&---------------------------------------------------------------------*
 START-OF-SELECTION.
 
-  DATA: GO_MAIN TYPE REF TO LCL_MAIN,
-        GO_CX_ROOT TYPE REF TO CX_ROOT.
-
   TRY.
 
-      CREATE OBJECT GO_MAIN.
-      GO_MAIN->START( ).
+      go_main->start( ).
 
-    CATCH CX_ROOT INTO GO_CX_ROOT.
+    CATCH cx_root INTO DATA(go_cx_root).
+      MESSAGE go_cx_root->get_longtext( ) TYPE 'S' DISPLAY LIKE 'E'.
       BREAK-POINT. " For testing purposes only
   ENDTRY.
